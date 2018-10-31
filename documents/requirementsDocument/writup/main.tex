@@ -1,0 +1,135 @@
+\documentclass[draftclsnofoot,onecolumn,letterpaper,10pt,compsoc]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+% \usepackage[backend=bibtex]{biblatex}
+\usepackage[english]{babel}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[pdf]{pstricks}
+\usepackage[utf8]{inputenc}
+\usepackage{alltt}                                           
+\usepackage{amsmath}                                         
+\usepackage{amssymb}                                         
+\usepackage{amsthm}                                          
+\usepackage{blindtext}
+\usepackage{calc}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{csquotes}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage[xindy]{glossaries}
+\makeglossaries
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{longtable}
+\usepackage{pst-gantt}
+\usepackage{pst-uml}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{titling}
+\usepackage{url}
+\usepackage{pdfpages}
+\usepackage{array}
+
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em}%
+}
+\begin{document}
+
+\title{\huge Requirements Document}
+\subtitle{CS 461 - CS Senior Capstone \\ Race Car Scanning and Modeling}
+\author{Donghao Lin\\ Joshua Diedrich \\Christopher Breniser \\ }
+\date{Fall 2018}
+\maketitle
+\vspace{2cm}
+\begin{abstract}
+
+\noindent This document outlines the client requirements for achieving a base model for scanning and measuring Indy Lights race cars to confirm their alignment with compliance regulations. It will cover the technology the project will be providing, as well as the dependencies of the project.  This document is an agreement between RHEV and LARS on the expectations of the Race Car Scanning and Modeling project.
+\end{abstract}
+\clearpage
+
+\tableofcontents
+
+\newpage
+
+\section{Introduction}
+\subsection{Purpose}
+This document is to present a detailed description of the capstone project currently titled “Race Car Scanning and Modeling project”. It is being compiled and completed by the Oregon State University Group 6 CS Capstone Team. This document is intended for the REHV development team and any of their partnering affiliates.
+
+\subsection{Scope}
+The project described in this document will be used by the REHV development team as a base for testing and creating a system to measure Indy Lights series race car body's to check for compliance prior to a race.
+
+\subsection{Definitions}
+\begin{description}[font=$\bullet$~]
+\item[LARS:] Laser Assisted Race-car Scanning.
+\item  [Camber:] Degree to which right-side tires lean in toward the car (from the top of the tire) and the left-side tires lean out. A useful tool to gain grip in corners by maximizing the amount of tire-to-track contact
+\item[Chassis:] The central body of the car, including the driver's compartment. Also referred to as the "tub."\cite{indycarterm}
+\item[Downforce:] Creation of force through aerodynamics, which keeps the car stuck to the track. High-speed movement of air underneath the car creates a vacuum, while the wings on the car force it to stay on the ground, acting in a manner opposite to the wings of an airplane.
+\item[Suspension \& Wheel Energy Management System (SWEMS):] Wheel-restraint system using multiple restraints attached at multiple points to a car’s chassis and suspension designed to minimize the possibility of wheel assemblies becoming detached during high-speed accidents. The restraints are made of FIA-approved Zylon.
+\item[Toe:] Refers to the alignment of the front and rear tires. If tires point inward, the condition is called "toe-in." If tires point outward, the condition is called "toe-out." Correct toe settings are essential in order to maximize grip.
+\item[Wicker Bill:] A long, narrow, removable spoiler made of steel, aluminum or carbon fiber on the trailing edge of the front and rear wings which varies in height, creating downforce. Teams will use different sized wicker bills to create more or less downforce.
+\end{description}
+
+\section{External Interfaces}
+
+\subsection{Hardware Interface}
+The laser interface will be used at the physical race track.  This interface will have two basic functions.  It will need to provide the user with the ability to capture the measurements of the car once the lasers are aligned.  It should then give users the ability to send and save those measurements to the RHEV system. 
+
+\subsection{Laser UI}
+The software user interface will be a simple output of data displayed to a screen. It will also need to be able to send data over a wired or wireless connections based on the needs of that track. 
+
+\subsection{RHEV Application}
+The RHEV system is an existing user interface.  This is an at-track racing software that race organizers currently use.  This system is where the final measurements for each car will eventually end up.
+
+\section{Functions}
+\subsection{Initial Capture}
+This hardware to software connection will capture the output of the laser reading.  The output described will come in the form of a USB from each laser.  The output of these USBs will be read in by the computer running the program.
+
+\subsection{Final Calculation}
+This software will take a number of distance measurements as input.  These measurements will be compared with the distance between the lasers to calculate the final measurements needed on the Indie Lights.  These measurements will be saved in run-time and subsequently sent out via the network or hard line as needed.
+
+\section{Usability Requirements}
+
+\subsection{Mounting System}
+The mounting system is responsible for holding the lasers in place. A preset layout will be followed that specifies the exact locations of mounts and lasers.  These locations are known by the software, and will be used to locate and measure the car. The system as a whole will have to be adjustable such that users can correctly align the lasers on the vehicle.  This will be done manually and be guided by hand. Once set in place, it needs to be consistent and accurate such that the measurements taken have an error that is within the constraints of the lasers used.
+
+\subsection{Lasers}
+Each laser provided will need to be accurate to within 1.5mm and have a maximum range greater than or equal to the length from front to back of an Indie Light Race Car.  It is also necessary that each laser has the ability to interface with a computer and send an output that can be read digitally.
+
+\section{Performance Requirements}
+
+\subsection{Consistency/Accuracy}
+Cars with measurements off by just less than an inch can fail inspection.  The project needs to get consistently accurate measurements within these ranges to be considered reliable.  The system has to be at least as accurate or more accurate than the current system used in the approval process.
+\subsection{Speed}
+The current process of inspecting Indie Light Cars takes a certain amount of time.  This project will have to take measurements quickly enough such that it does not add any time to these inspections.
+\subsection{Robustness}
+The product will be exposed to weather conditions at each race.  It will be robust enough that it can withstand and perform accurately under conditions such as rain, wind, and exposure to bright light.
+\subsection{Mobility}
+The physical setup will need to be moved to and from the race track on race day.  The product must be lightweight and mobile enough to allow this process to be reasonably simple.
+
+\section{Design Constraints}
+
+\subsection{Price}
+The price of lasers drastically increases as the accuracy increases.  Lasers that lie in a higher price range would provide better dependency and accuracy.  The physical mounts used to hold the lasers will also have to be purchased.  As the exactness of our measurements from these products gets better, the overall price would ultimately go up.
+\subsection{Process}
+The teams at the race track have a specific process they use to inspect vehicles.  This is preset and cannot be changed.  The project will have to adhere to this and work as an addition to the existing procedure. While some aspects can be molded and altered, this process limits some of the possible approaches that could be taken to measure the vehicles using lasers.
+\subsection{Labor}
+The laser mounts will take some work at each race track to be set up.  This will require some manpower to complete.  The amount of people available at each race is limited.  This constrains how much set up the project can take.
+
+\section{Software System Attributes}
+\subsection{Scalability}
+This system will be a modular piece of software that enables the end user to attach multiple sets of lasers to take measurements that will in turn pass their inputs into our software and be processed accordingly.
+\subsection{Reliability}
+The project will produce reliably consistent results on separate runs of the program.  The results should not differ between identical measurements.
+
+\clearpage
+
+\bibliographystyle{IEEEtran}
+\bibliography{./ref}
+
+\end{document}
