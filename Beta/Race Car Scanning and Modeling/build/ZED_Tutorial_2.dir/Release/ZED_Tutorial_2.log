@@ -1,0 +1,9 @@
+﻿  Building Custom Rule C:/Users/Chris/Documents/AAA_Group6Project/zed-examples-master/tutorials/tutorial 2 - image capture/CMakeLists.txt
+  CMake does not need to re-run because C:/Users/Chris/Documents/AAA_Group6Project/zed-examples-master/tutorials/tutorial 2 - image capture/build/CMakeFiles/generate.stamp is up-to-date.
+cl : Command line warning D9002: ignoring unknown option '-g'
+cl : Command line warning D9002: ignoring unknown option '-O3'
+  main.cpp
+C:\Users\Chris\Documents\AAA_Group6Project\zed-examples-master\tutorials\tutorial 2 - image capture\main.cpp(266): warning C4996: 'sl::Camera::getCameraTimestamp': was declared deprecated
+  C:\Program Files (x86)\ZED SDK\include\sl_zed/Camera.hpp(1113): note: see declaration of 'sl::Camera::getCameraTimestamp'
+C:\Users\Chris\Documents\AAA_Group6Project\zed-examples-master\tutorials\tutorial 2 - image capture\main.cpp(292): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  ZED_Tutorial_2.vcxproj -> C:\Users\Chris\Documents\AAA_Group6Project\zed-examples-master\tutorials\tutorial 2 - image capture\build\Release\ZED_Tutorial_2.exe
