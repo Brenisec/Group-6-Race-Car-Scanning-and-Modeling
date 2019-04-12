@@ -21,6 +21,7 @@
 #include <sl_zed/Camera.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <vector_types.h>
 #include <cstdlib>
 
 using namespace sl;
@@ -30,12 +31,17 @@ using namespace std;
 
 int thresh = 50, N = 1;
 const char* wndname = "Square Detection Demo";
-vector<Point> center_guess;
-vector<Point> center_actual;
+vector<Point> centers;  //initial centers of each square
+vector<Point> min_centers;  //centers minimized to one point per square
+vector<Point> final_centers;  //final five squares
+
+struct offset{
+	float x;
+	float y;
+};
 
 
-
-static double angle(Point pt1, Point pt2, Point pt0)
+static double angle(Point pt1, Point pt2, Point pt0)  //used to find the angle between three points
 {
 	double dx1 = pt1.x - pt0.x;
 	double dy1 = pt1.y - pt0.y;
@@ -50,7 +56,7 @@ static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
 
 	cv::Mat pyr, timg, gray0(image.size(), CV_8U), gray;
 
-	// down-scale and upscale the image to filter out the noise
+	// filter out noise by down and then upscaling the image
 	pyrDown(image, pyr, Size(image.cols / 2, image.rows / 2));
 	pyrUp(pyr, timg, image.size());
 	vector<vector<Point> > contours;
@@ -71,15 +77,15 @@ static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
 				// apply Canny. Take the upper threshold from slider
 				// and set the lower to 0 (which forces edges merging)
 				Canny(gray0, gray, 0, thresh, 5);
-				// dilate canny output to remove potential
-				// holes between edge segments
-				dilate(gray, gray, cv::Mat(), Point(-1, -1));
+// dilate canny output to remove potential
+// holes between edge segments
+dilate(gray, gray, cv::Mat(), Point(-1, -1));
 			}
 			else
 			{
-				// apply threshold if l!=0:
-				//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
-				gray = gray0 >= (l + 1) * 255 / N;
+			// apply threshold if l!=0:
+			//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+			gray = gray0 >= (l + 1) * 255 / N;
 			}
 
 			// find contours and store them all as a list
@@ -101,9 +107,11 @@ static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
 				// Note: absolute value of an area is used because
 				// area may be positive or negative - in accordance with the
 				// contour orientation
+				
 				if (approx.size() == 4 &&
 					fabs(contourArea(approx)) > 1000 &&
-					isContourConvex(approx))
+					isContourConvex(approx) &&
+					((fabs(contourArea(approx)) / 2073600) < 0.1))
 				{
 					double maxCosine = 0;
 
@@ -118,13 +126,13 @@ static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
 					// (all angles are ~90 degree) then write quandrange
 					// vertices to resultant sequence
 					Scalar color;
-					if (maxCosine < 0.05) {
+					if (maxCosine < 0.1) {
 						//cout << maxCosine << endl;
 						squares.push_back(approx);
 						//cout << approx[0] << " " << approx[1] << " " << approx[2] << " " << approx[3] << endl;
 						Point center = (approx[0] + approx[1] + approx[2] + approx[3])*0.25;
-						center_guess.push_back(center);
-						circle(image, center, 2, color, 2, 8, 0);
+						centers.push_back(center);
+						//circle(image, center, 2, color, 2, 8, 0);
 					}
 				}
 			}
@@ -151,72 +159,140 @@ cv::Mat slMat2cvMat(sl::Mat & input);
 
 void findActuals() {
 	int accept = 1;
-	for (int i = 0; i < center_guess.size(); i++) {
+	for (int i = 0; i < centers.size(); i++) {
 		accept = 1;
-		for (int j = 0; j < center_actual.size(); j++) {
-			if ((abs(center_guess[i].x - center_actual[j].x) < 5) && (abs(center_guess[i].y - center_actual[j].y) < 5)) {
+		for (int j = 0; j < min_centers.size(); j++) {
+			if ((abs(centers[i].x - min_centers[j].x) < 10) && (abs(centers[i].y - min_centers[j].y) < 10)) {
 				accept = 0;
 			}
 		}
 		if (accept == 1) {
-			center_actual.push_back(center_guess[i]);
+			min_centers.push_back(centers[i]);
+			cout << centers[i] << endl;
 		}
 	}
 
-	for (int k = 0; k < center_actual.size(); k++) {
-		//cout << "new actual" << center_actual[k] << endl;
+	for (int k = 0; k < min_centers.size(); k++) {
+		//cout << "new actual" << min_centers[k] << endl;
 	}
+}
+
+bool withinRange(Point A, Point B, int range) {
+	if (abs((A.x - B.x)) < range) {
+		if (abs(A.y - B.y) < range) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void combinationUtil(vector<Point> arr, int n, int r, int index,
+	vector<Point> data, int i)
+{
+	// Current cobination is ready, print it 
+	Point sum = 0;
+	if (index == r) {
+		for (int j = 0; j < r; j++) {
+			sum += data[j];
+			cout << data[j];
+		}
+		printf("\n");
+		Point avg = sum / 4;
+		for (int k = 0; k < min_centers.size(); k++) {
+			if (withinRange(avg, min_centers[k], 10)) {
+				cout << "FOUND A MATCH: " << min_centers[k] << endl;
+				for (int j = 0; j < r; j++) {
+					final_centers.push_back(data[j]);
+				}
+				final_centers.push_back(min_centers[k]);
+			}
+		}
+		return;
+	}
+
+	// When no more elements are there to put in data[] 
+	if (i >= n)
+		return;
+
+	// current is included, put next at next location 
+	data[index] = arr[i];
+	combinationUtil(arr, n, r, index + 1, data, i + 1);
+
+	// current is excluded, replace it with next 
+	// (Note that i+1 is passed, but index is not 
+	// changed) 
+	combinationUtil(arr, n, r, index, data, i + 1);
+}
+
+void findFive() {
+	vector<Point> temp;
+	temp.resize(min_centers.size());
+
+	combinationUtil(min_centers, min_centers.size(), 4, 0, temp, 0);
+
 }
 
 void setPoints(Point& left, Point& right, Point& center, Point& top, Point& bottom) {
 	//cout << "in set" << endl;
-	left = center_actual[0];
+	left = final_centers[0];
 	int i;
-	for (i = 0; i < center_actual.size(); i++) {
-		if (left.x > center_actual[i].x) {
-			left = center_actual[i];
+	for (i = 0; i < final_centers.size(); i++) {
+		if (left.x > final_centers[i].x) {
+			left = final_centers[i];
 		}
 	}
-	right = center_actual[0];
-	for (i = 0; i < center_actual.size(); i++) {
-		if (right.x < center_actual[i].x) {
-			right = center_actual[i];
+	right = final_centers[0];
+	for (i = 0; i < final_centers.size(); i++) {
+		if (right.x < final_centers[i].x) {
+			right = final_centers[i];
 		}
 	}
-	top = center_actual[0];
-	for (i = 0; i < center_actual.size(); i++) {
-		if (top.y > center_actual[i].y) {
-			top = center_actual[i];
+	top = final_centers[0];
+	for (i = 0; i < final_centers.size(); i++) {
+		if (top.y > final_centers[i].y) {
+			top = final_centers[i];
 		}
 	}
-	bottom = center_actual[0];
-	for (i = 0; i < center_actual.size(); i++) {
-		if (bottom.y < center_actual[i].y) {
-			bottom = center_actual[i];
+	bottom = final_centers[0];
+	for (i = 0; i < final_centers.size(); i++) {
+		if (bottom.y < final_centers[i].y) {
+			bottom = final_centers[i];
 		}
 	}
 
 	int accept = 1;
-	for (int i = 0; i < center_actual.size(); i++) {
+	for (int i = 0; i < final_centers.size(); i++) {
 		accept = 1;
-		if (center_actual[i] == left) {
+		if (final_centers[i] == left) {
 			accept = 0;
 		}
-		if (center_actual[i] == right) {
+		if (final_centers[i] == right) {
 			accept = 0;
 		}
-		if (center_actual[i] == top) {
+		if (final_centers[i] == top) {
 			accept = 0;
 		}
-		if (center_actual[i] == bottom) {
+		if (final_centers[i] == bottom) {
 			accept = 0;
 		}
 		if (accept == 1) {
-			center = center_actual[i];
+			center = final_centers[i];
 		}
 	}
 }
 
+void mark(cv::Mat &image, Point left, Point top, Point center, Point bottom, Point right) {
+	Scalar color(0, 255, 255);
+	circle(image, center, 2, Scalar(255, 255, 153), 2, 8, 0);
+	circle(image, top, 2, Scalar(255, 255, 153), 2, 8, 0);
+	circle(image, left, 2, Scalar(255, 255, 153), 2, 8, 0);
+	circle(image, right, 2, Scalar(255, 255, 153), 2, 8, 0);
+	circle(image, bottom, 2, Scalar(255, 255, 153), 2, 8, 0);
+}
+
+//float get_offset(sl::Mat dmap, Point center) {
+//	offset off;
+//}
 
 int main(int argc, char **argv) {
 	Point left, right, center, top, bottom;
@@ -226,7 +302,7 @@ int main(int argc, char **argv) {
 	cout << "Opening Camera..." << endl;
     // Set configuration parameters
     InitParameters init_params;
-    init_params.camera_resolution = RESOLUTION_HD1080; // Use HD1080 video mode
+    init_params.camera_resolution = RESOLUTION_HD720; // Use HD1080 video mode
     init_params.camera_fps = 30; // Set fps at 30
 
     // Open the camera
@@ -234,37 +310,58 @@ int main(int argc, char **argv) {
     if (err != SUCCESS)
         exit(-1);
 	cout << "Camera Found" << endl;
-
+	sl::float4 point3D;
 
     int i = 0;
 	sl::Mat image;
 	sl::Mat depth_map;
 	cv::Mat image2;
+	sl::Mat point_cloud;
 	float leftDepth, rightDepth, centerDepth, topDepth, bottomDepth;
-    if (zed.grab() == SUCCESS) {
-        // A new image is available if grab() returns SUCCESS
-		cout << "Retreiving image..." << endl;
-		zed.retrieveImage(image, VIEW_LEFT); // Get the left image
-		cout << "Making depth map" << endl;
-		zed.retrieveMeasure(depth_map, MEASURE_DEPTH);
-		image2 = slMat2cvMat(image);
-		cout << "Finding Squares..." << endl;
-		findSquares(image2, squares);
-		findActuals();
-		setPoints(left, right, center, top, bottom);
-		depth_map.getValue(left.x, left.y, &leftDepth);
-		depth_map.getValue(right.x, right.y, &rightDepth);
-		depth_map.getValue(center.x, center.y, &centerDepth);
-		depth_map.getValue(top.x, top.y, &topDepth);
-		depth_map.getValue(bottom.x, bottom.y, &bottomDepth);
+	namedWindow(wndname);
+	while(1){
+		centers.clear();
+		min_centers.clear();
+		final_centers.clear();
+		if (zed.grab() == SUCCESS) {
+			// A new image is available if grab() returns SUCCESS
+			cout << "Retreiving image..." << endl;
+			zed.retrieveImage(image, VIEW_LEFT); // Get the left image
+			cout << "Making depth map" << endl;
+			zed.retrieveMeasure(depth_map, MEASURE_DEPTH);
+			zed.retrieveMeasure(point_cloud, MEASURE_XYZRGBA);
+			image2 = slMat2cvMat(image); //conver to opencv img
+			cout << "Finding Squares..." << endl;
+			findSquares(image2, squares);   //find all square contours - store in squares
+			findActuals();  //minimize extra squares
+			for (int j = 0; j < min_centers.size(); j++) {
+				circle(image2, min_centers[j], 2, Scalar(0, 255, 255), 2, 8, 0);
+			}
+			if (min_centers.size() > 4)
+			{
+				findFive();  //minimize more extra squares
+				setPoints(left, right, center, top, bottom);
+				mark(image2, left, top, center, bottom, right);
+				depth_map.getValue(left.x, left.y, &leftDepth);
+				depth_map.getValue(right.x, right.y, &rightDepth);
+				depth_map.getValue(center.x, center.y, &centerDepth);
+				depth_map.getValue(top.x, top.y, &topDepth);
+				depth_map.getValue(bottom.x, bottom.y, &bottomDepth);
 
-		
-		cout << " Top square depth: " << topDepth << endl << " Bottom square depth: " << bottomDepth << endl << " Right square depth: " << rightDepth << endl << " Left square depth: " << leftDepth << endl << " Center square depth " << centerDepth << endl;
+				cout << " Top square depth: " << topDepth << endl << " Bottom square depth: " << bottomDepth << endl << " Right square depth: " << rightDepth << endl << " Left square depth: " << leftDepth << endl << " Center square depth " << centerDepth << endl;
 
 
-		drawSquares(image2, squares);
-        unsigned long long timestamp = zed.getCameraTimestamp(); // Get the timestamp at the time the image was captured
-        i++;
+				imshow(wndname, image2);
+				if (min_centers.size() > 5)
+					waitKey(1);
+				else
+					waitKey(1);
+			}
+			else {
+				imshow(wndname, image2);
+				waitKey(1);
+			}
+		}
     }
     // Close the camera
     zed.close();
