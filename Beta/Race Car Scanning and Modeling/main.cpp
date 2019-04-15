@@ -198,7 +198,7 @@ bool withinRange(Point A, Point B, int range) {
 }
 
 void combinationUtil(vector<Point> arr, int n, int r, int index,
-	vector<Point> data, int i)
+	vector<Point> data, int i) //algo to find all combinations of 4
 {
 	// Current cobination is ready, print it 
 	Point sum = 0;
@@ -356,10 +356,6 @@ int main(int argc, char **argv) {
 		else
 			cout << zed1[i]->getCameraInformation().camera_model << " n°" << i << " SN " <<
 			zed1[i]->getCameraInformation().serial_number << " -> Result: " << sl::toString(err) << endl;
-
-		//width = zed1[i]->getResolution().width;
-		//height = zed1[i]->getResolution().height;
-		//SbSResult[i] = cv::Mat(height, width * 2, CV_8UC4, 1);
 	}
 	sl::Mat image1sl, image2sl;
 	cv::Mat img1, img2;
