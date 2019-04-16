@@ -1,23 +1,3 @@
-///////////////////////////////////////////////////////////////////////////
-//
-// Copyright (c) 2018, STEREOLABS.
-//
-// All rights reserved.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-///////////////////////////////////////////////////////////////////////////
-
 #include <sl_zed/Camera.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -29,28 +9,206 @@ using namespace sl;
 using namespace cv;
 using namespace std;
 
+//DEFINES
 #define PI 3.14159265
-#define CAM_DISTANCE 580
+#define CAM_DISTANCE 5600
+#define TRACK_DISTANCE 2200
 
+//ZED
 const int MAX_ZED = 12;
-
-sl::Camera* zed1[MAX_ZED];
-cv::Mat SbSResult[MAX_ZED];
-cv::Mat ZED_LRes[MAX_ZED];
-int width, height;
-long long ZED_Timestamp[MAX_ZED];
-
+sl::Camera* zed1[MAX_ZED];  //array of camera objects
 int thresh = 50, N = 1;
-const char* wndname = "Square Detection Demo";
+
+//POINTS
 vector<Point> centers;  //initial centers of each square
 vector<Point> min_centers;  //centers minimized to one point per square
 vector<Point> final_centers;  //final five squares
 
-struct offset{
-	float x;
-	float y;
-};
+//FUNCTIONS
+int ZED_init(InitParameters &init_params); //initialize ZED cameras
+static double angle(Point pt1, Point pt2, Point pt0); //calculate angle of three given Point objects
+static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares);  //find all squares in image  --referenced and adjusted from opencv github sample
+cv::Mat slMat2cvMat(sl::Mat & input);  //convert between ZED image and cv image
+void findActuals();   //condense multiple squares on one square into a single point
+bool withinRange(Point A, Point B, int range);  //true if two points are within a proximity of each other
+void combinationUtil(vector<Point> arr, int n, int r, int index, vector<Point> data, int i);  //matches all groups of size 4  -- referenced and adjusted from geeksforgeeks.com
+void fixDepth(sl::Mat depth_map); //drops squares past a depth range
+void findFive();  //makes sure squares are equidistant to center square
+void setPoints(Point& left, Point& right, Point& center, Point& top, Point& bottom);  //choose correct layout of squares
+void mark(cv::Mat &image, Point left, Point top, Point center, Point bottom, Point right);  //mark final squares with a different color
+float get_toe_camber(Point left, Point right, sl::Mat point_cloud);  //calculate the toe and camber of the wheel
+void _draw(cv::Mat &image);  //draw min_centers onto image
+void print_toe(float leftDepth, float rightDepth, Point left, Point right, sl::Mat point_cloud);
+void print_camber(float topDepth, float bottomDepth, Point top, Point bottom, sl::Mat point_cloud);
+void print_finals(float leftDepth, float topDepth, float bottomDepth, float rightDepth, float centerDepth, Point left, Point top, Point bottom, Point right, Point center, sl::Mat point_cloud, int x);
+void get_centers(Point center, sl::float4 &center_right, sl::float4 &center_left, int x, sl::Mat point_cloud);
 
+int main(int argc, char **argv) {
+	
+	//cv and sl image declarations
+	sl::Mat image, depth_map, point_cloud;  //initial ZED img, dpeth map, and point cloud
+	cv::Mat image2;  //opencv img to be converted from sl img
+	string windows[] = { "Left Camera", "Right Camera" };  //opencv windows
+	
+	vector<vector<Point>> squares; //2D array of squares
+
+	//finals
+	Point left, right, center, top, bottom;  //points for final squares
+	float leftDepth, rightDepth, centerDepth, topDepth, bottomDepth; //depth values for final squares
+	sl::float4 center_left, center_right;  //center square loc for each cam
+
+	//config for ZED
+	InitParameters init_params;
+	int nb_detected_zed = ZED_init(init_params);
+    
+	//take measurements for each ZED detected
+	for (int x = 0; x < nb_detected_zed; x++) {  
+		namedWindow(windows[x]);
+		centers.clear();
+		min_centers.clear();
+		final_centers.clear();
+
+		if (zed1[x]->grab() == SUCCESS) {  //if we grab our image
+			
+			zed1[x]->retrieveImage(image, VIEW_LEFT); // Get the left image
+			zed1[x]->retrieveMeasure(depth_map, MEASURE_DEPTH);  //generate depth map
+			zed1[x]->retrieveMeasure(point_cloud, MEASURE_XYZRGBA);  //generate 3D point cloud
+
+			image2 = slMat2cvMat(image); //convert to opencv img
+
+			findSquares(image2, squares);
+
+			findActuals(); 
+
+			fixDepth(depth_map);
+
+			_draw(image2);  //draw unfinalized sq's in yellow
+
+			if (min_centers.size() > 4)  //continue if we find at least 5 squares
+			{
+				findFive();
+
+				setPoints(left, right, center, top, bottom);
+
+				mark(image2, left, top, center, bottom, right);
+
+				//get a depth value for each final square
+				depth_map.getValue(left.x, left.y, &leftDepth);
+				depth_map.getValue(right.x, right.y, &rightDepth);
+				depth_map.getValue(center.x, center.y, &centerDepth);
+				depth_map.getValue(top.x, top.y, &topDepth);
+				depth_map.getValue(bottom.x, bottom.y, &bottomDepth);
+
+				//print current cameras measurements
+				print_finals(leftDepth, topDepth, bottomDepth, rightDepth, centerDepth, left, top, bottom, right, center, point_cloud, x);
+
+				get_centers(center, center_right, center_left, x, point_cloud);  //save center offsets
+
+				imshow(windows[x], image2);  //display image
+			}
+			else {
+				imshow(windows[x], image2);  //display image without final squares
+			}
+		}
+	}
+
+	cout << endl << endl << "Wheelbase: " << CAM_DISTANCE + center_right.x - center_left.x << "mm" << endl;
+	cout << "Track: " << TRACK_DISTANCE - center_right.z - center_left.z << "mm" << endl;
+
+	waitKey(0);
+	for (int i = 0; i < nb_detected_zed; i++)
+		zed1[i]->close();
+
+	return 0;
+
+}
+
+int ZED_init(InitParameters &init_params) {
+	string res;
+	cout << "Enter 720 for 720P and 1080 for 1080P: ";
+	cin >> res;
+	if (res == "1080") {
+		init_params.camera_resolution = RESOLUTION_HD1080; // Use HD1080 video mode
+	}
+	else if (res == "720") {
+		init_params.camera_resolution = RESOLUTION_HD720;  //Use HD720 video mode
+	}
+	else {
+		init_params.camera_resolution = RESOLUTION_HD1080; //1080 by default
+	}
+	init_params.camera_fps = 15; // Set fps
+
+	std::vector<sl::DeviceProperties> devList = sl::Camera::getDeviceList();  //list of connected Cameras
+	int nb_detected_zed = devList.size();
+
+	cout << " Number of ZED Detected : " << nb_detected_zed << endl;
+
+	for (int i = 0; i < nb_detected_zed; i++) {
+		zed1[i] = new sl::Camera();
+		init_params.input.setFromCameraID(i);
+
+		sl::ERROR_CODE err = zed1[i]->open(init_params);
+
+
+		if (err != sl::SUCCESS) {
+			cout << zed1[i]->getCameraInformation().camera_model << " n" << i << " -> Result: " << sl::toString(err) << endl;
+			delete zed1[i];
+		}
+		else
+			cout << zed1[i]->getCameraInformation().camera_model << " n" << i << " SN " <<
+			zed1[i]->getCameraInformation().serial_number << " -> Result: " << sl::toString(err) << endl;
+	}
+
+	return nb_detected_zed;
+}
+
+void get_centers(Point center, sl::float4 &center_right, sl::float4 &center_left, int x, sl::Mat point_cloud) {
+	if (x == 0) {
+		point_cloud.getValue(center.x, center.y, &center_right);
+	}
+	else
+	{
+		point_cloud.getValue(center.x, center.y, &center_left);
+	}
+}
+
+void print_finals(float leftDepth, float topDepth, float bottomDepth, float rightDepth, float centerDepth, Point left, Point top, Point bottom, Point right, Point center, sl::Mat point_cloud, int x) {
+
+	cout << endl << "----------CAMERA " << x + 1 << "----------" << endl;
+	
+	cout 
+		<< " Top square depth: "<< topDepth << "mm" << endl 
+		<< " Bottom square depth: " << bottomDepth << "mm" << endl
+		<< " Right square depth: " << rightDepth << "mm" << endl
+		<< " Left square depth: " << leftDepth << "mm" << endl
+		<< " Center square depth " << centerDepth << "mm" << endl;
+
+	print_toe(leftDepth, rightDepth, left, right, point_cloud);
+	print_camber(topDepth, rightDepth, top, bottom, point_cloud);
+
+	cout << "-----------------------------" << endl;
+
+}
+
+void print_toe(float leftDepth, float rightDepth, Point left, Point right, sl::Mat point_cloud) {
+	if (leftDepth < rightDepth)
+		cout << " Toe in of: " << get_toe_camber(left, right, point_cloud) << " degrees" << endl;
+	else
+		cout << " Toe out of: " << get_toe_camber(left, right, point_cloud) << " degrees" << endl;
+}
+
+void print_camber(float topDepth, float bottomDepth, Point top, Point bottom, sl::Mat point_cloud) {
+	if (topDepth < bottomDepth)
+		cout << " Camber: " << get_toe_camber(top, bottom, point_cloud) << " degrees" << endl;
+	else
+		cout << " Camber: -" << get_toe_camber(top, bottom, point_cloud) << " degrees" << endl;
+}
+
+void _draw(cv::Mat &image) {
+	for (int j = 0; j < min_centers.size(); j++) {
+		circle(image, min_centers[j], 2, Scalar(0, 255, 255), 2, 8, 0);
+	}
+}
 
 static double angle(Point pt1, Point pt2, Point pt0)  //used to find the angle between three points
 {
@@ -61,7 +219,7 @@ static double angle(Point pt1, Point pt2, Point pt0)  //used to find the angle b
 	return (dx1*dx2 + dy1 * dy2) / sqrt((dx1*dx1 + dy1 * dy1)*(dx2*dx2 + dy2 * dy2) + 1e-10);
 }
 
-static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
+static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)  //squares.cpp modified from opencv github pages
 {
 	squares.clear();
 
@@ -78,46 +236,21 @@ static void findSquares(const cv::Mat& image, vector<vector<Point> >& squares)
 		int ch[] = { c, 0 };
 		mixChannels(&timg, 1, &gray0, 1, ch, 1);
 
-		// try several threshold levels
-		for (int l = 0; l < N; l++)
-		{
-			// hack: use Canny instead of zero threshold level.
-			// Canny helps to catch squares with gradient shading
-			if (l == 0)
-			{
-				// apply Canny. Take the upper threshold from slider
-				// and set the lower to 0 (which forces edges merging)
-				Canny(gray0, gray, 0, thresh, 5);
-// dilate canny output to remove potential
-// holes between edge segments
-dilate(gray, gray, cv::Mat(), Point(-1, -1));
-			}
-			else
-			{
-			// apply threshold if l!=0:
-			//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
-			gray = gray0 >= (l + 1) * 255 / N;
-			}
+			// Canny for edge detection
+			Canny(gray0, gray, 0, thresh, 5);
+			dilate(gray, gray, cv::Mat(), Point(-1, -1));
 
-			// find contours and store them all as a list
+
+
+			// store all our contours
 			findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
-			//cout << "SIZE: " << contours.size() << endl;
 
 			vector<Point> approx;
 
-			// test each contour
+			// test each contour for 4 corners and 90 degrees
 			for (size_t i = 0; i < contours.size(); i++)
 			{
-				// approximate contour with accuracy proportional
-				// to the contour perimeter
 				approxPolyDP(contours[i], approx, arcLength(contours[i], true)*0.02, true);
-
-				// square contours should have 4 vertices after approximation
-				// relatively large area (to filter out noisy contours)
-				// and be convex.
-				// Note: absolute value of an area is used because
-				// area may be positive or negative - in accordance with the
-				// contour orientation
 				
 				if (approx.size() == 4 &&
 					fabs(contourArea(approx)) > 1000 &&
@@ -133,40 +266,23 @@ dilate(gray, gray, cv::Mat(), Point(-1, -1));
 						maxCosine = MAX(maxCosine, cosine);
 					}
 
-					// if cosines of all angles are small
-					// (all angles are ~90 degree) then write quandrange
-					// vertices to resultant sequence
+					//Cosines must be close to 0
 					Scalar color;
 					if (maxCosine < 0.1) {
-						//cout << maxCosine << endl;
+
 						squares.push_back(approx);
-						//cout << approx[0] << " " << approx[1] << " " << approx[2] << " " << approx[3] << endl;
+
 						Point center = (approx[0] + approx[1] + approx[2] + approx[3])*0.25;
 						centers.push_back(center);
-						//circle(image, center, 2, color, 2, 8, 0);
 					}
 				}
 			}
-		}
+		
 	}
 }
 
 
 
-static void drawSquares(cv::Mat& image, const vector<vector<Point> >& squares)
-{
-	/*for (size_t i = 0; i < squares.size(); i++)
-	{
-		const Point* p = &squares[i][0];
-		int n = (int)squares[i].size();
-		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
-	}*/
-	imshow(wndname, image);
-	waitKey(0);
-}
-
-
-cv::Mat slMat2cvMat(sl::Mat & input);
 
 void findActuals() {
 	int accept = 1;
@@ -179,13 +295,9 @@ void findActuals() {
 		}
 		if (accept == 1) {
 			min_centers.push_back(centers[i]);
-			//cout << centers[i] << endl;
 		}
 	}
 
-	for (int k = 0; k < min_centers.size(); k++) {
-		//cout << "new actual" << min_centers[k] << endl;
-	}
 }
 
 bool withinRange(Point A, Point B, int range) {
@@ -205,13 +317,10 @@ void combinationUtil(vector<Point> arr, int n, int r, int index,
 	if (index == r) {
 		for (int j = 0; j < r; j++) {
 			sum += data[j];
-			//cout << data[j];
 		}
-		printf("\n");
 		Point avg = sum / 4;
 		for (int k = 0; k < min_centers.size(); k++) {
 			if (withinRange(avg, min_centers[k], 10)) {
-				//cout << "FOUND A MATCH: " << min_centers[k] << endl;
 				for (int j = 0; j < r; j++) {
 					final_centers.push_back(data[j]);
 				}
@@ -238,10 +347,8 @@ void combinationUtil(vector<Point> arr, int n, int r, int index,
 void fixDepth(sl::Mat depth_map) { //filter our far away squares
 	float temp;
 	vector<Point> temp_vec;
-	//cout << "MIN CENTERS SIZE: " << min_centers.size() << endl;
 	for (int i = 0; i < min_centers.size(); i++) {
 		depth_map.getValue(min_centers[i].x, min_centers[i].y, &temp);
-		//cout << "DEPTH: " << temp << endl;
 		if (temp < 600) {  //keep ones closer than 600mm
 			temp_vec.push_back(min_centers[i]);
 		}
@@ -258,7 +365,6 @@ void findFive() {
 }
 
 void setPoints(Point& left, Point& right, Point& center, Point& top, Point& bottom) {
-	//cout << "in set" << endl;
 	left = final_centers[0];
 	int i;
 	for (i = 0; i < final_centers.size(); i++) {
@@ -321,142 +427,12 @@ float get_toe_camber(Point left, Point right, sl::Mat point_cloud) {
 	point_cloud.getValue(right.x, right.y, &right3D);
 	float d = sqrt(((left3D.x - right3D.x)*(left3D.x - right3D.x)) + ((left3D.y - right3D.y)*(left3D.y - right3D.y)));
 	float z = abs(left3D.z - right3D.z);
-	//cout << "D: " << d << "   Z: " << z << endl;
 	float angle;
 	angle = atan(z / d)*180/PI;
 	return angle;
 }
 
-int main(int argc, char **argv) {
-	Point left, right, center, top, bottom;
-    // Create a ZED camera object
-    Camera zed;     // Create a ZED camera object
-	vector<vector<Point> > squares;
-    // Set configuration parameters
-    InitParameters init_params;
-    init_params.camera_resolution = RESOLUTION_HD1080; // Use HD1080 video mode
-    init_params.camera_fps = 15; // Set fps at 30
-	
-	std::vector<sl::DeviceProperties> devList = sl::Camera::getDeviceList();
-	int nb_detected_zed = devList.size();
 
-	std::cout << " Number of ZED Detected : " << nb_detected_zed << std::endl;
-	// Create every ZED and init them
-	for (int i = 0; i < nb_detected_zed; i++) {
-		zed1[i] = new sl::Camera();
-		init_params.input.setFromCameraID(i);
-
-		sl::ERROR_CODE err = zed1[i]->open(init_params);
-
-
-		if (err != sl::SUCCESS) {
-			cout << zed1[i]->getCameraInformation().camera_model << " n°" << i << " -> Result: " << sl::toString(err) << endl;
-			delete zed1[i];
-		}
-		else
-			cout << zed1[i]->getCameraInformation().camera_model << " n°" << i << " SN " <<
-			zed1[i]->getCameraInformation().serial_number << " -> Result: " << sl::toString(err) << endl;
-	}
-	sl::Mat image1sl, image2sl;
-	cv::Mat img1, img2;
-
-	string windows[] = { "window1", "window2" };
-	sl::float4 center_left, center_right;
-
-	for (int x = 0; x < 2; x++) {
-		sl::float4 point3D;
-
-		int i = 0;
-
-		float sum_toe = 0;
-		float avg_toe;
-
-		sl::Mat image;
-		sl::Mat depth_map;
-		cv::Mat image2;
-		sl::Mat point_cloud;
-		float leftDepth, rightDepth, centerDepth, topDepth, bottomDepth;
-		namedWindow(windows[x]);
-		//while(i < 10){
-		centers.clear();
-		min_centers.clear();
-		final_centers.clear();
-
-
-		if (zed1[x]->grab() == SUCCESS) {  //if we grab our image
-			zed1[x]->retrieveImage(image, VIEW_LEFT); // Get the left image
-			zed1[x]->retrieveMeasure(depth_map, MEASURE_DEPTH);
-			zed1[x]->retrieveMeasure(point_cloud, MEASURE_XYZRGBA);
-
-			image2 = slMat2cvMat(image); //convert to opencv img
-
-			findSquares(image2, squares);   //find all square contours - store in squares
-
-			findActuals();  //minimize extra squares
-
-			fixDepth(depth_map);  //minimize far away squares
-
-			for (int j = 0; j < min_centers.size(); j++) {   //draw circles on ALL squares
-				circle(image2, min_centers[j], 2, Scalar(0, 255, 255), 2, 8, 0);
-			}
-
-			if (min_centers.size() > 4)  //continue if we find at least 5 squares
-			{
-				findFive();  //minimize more extra squares
-
-				setPoints(left, right, center, top, bottom);  //find top bottom etc..
-
-				mark(image2, left, top, center, bottom, right);  //draw only final five squares
-
-
-				depth_map.getValue(left.x, left.y, &leftDepth);
-				depth_map.getValue(right.x, right.y, &rightDepth);
-				depth_map.getValue(center.x, center.y, &centerDepth);
-				depth_map.getValue(top.x, top.y, &topDepth);
-				depth_map.getValue(bottom.x, bottom.y, &bottomDepth);
-
-				cout << endl << "------CAMERA " << x+1 << "------" << endl;
-				cout << " Top square depth: " << topDepth << endl << " Bottom square depth: " << bottomDepth << endl << " Right square depth: " << rightDepth << endl << " Left square depth: " << leftDepth << endl << " Center square depth " << centerDepth << endl;
-
-				//TOE
-				if (leftDepth < rightDepth)
-					cout << "Toe in of: " << get_toe_camber(left, right, point_cloud) << endl;
-				else
-					cout << "Toe out of: " << get_toe_camber(left, right, point_cloud) << endl;
-				sum_toe += get_toe_camber(left, right, point_cloud);
-
-				//CAMBER
-				if (topDepth < bottomDepth)
-					cout << "Camber: " << get_toe_camber(top, bottom, point_cloud) << endl;
-				else
-					cout << "Camber: -" << get_toe_camber(top, bottom, point_cloud) << endl;
-				cout << endl;
-
-				if (x == 0) {
-					point_cloud.getValue(center.x, center.y, &center_right);
-				}
-				else
-				{
-					point_cloud.getValue(center.x, center.y, &center_left);
-				}
-
-				imshow(windows[x], image2);
-			}
-			else {
-				imshow(windows[x], image2);
-				//waitKey(1);
-			}
-		}
-		i++;
-	}
-	
-	cout << "Wheelbase: " << CAM_DISTANCE + center_right.x - center_left.x << endl;
-	waitKey(0);
-		zed1[0]->close();
-		zed1[1]->close();
-		return 0;
-	
-}
 
 
 cv::Mat slMat2cvMat(sl::Mat& input) {
