@@ -1,0 +1,154 @@
+\documentclass[onecolumn, draftclsnofoot,10pt, compsoc]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{longtable}
+
+\usepackage{geometry}
+\geometry{textheight=9.5in, textwidth=7in}
+
+% 1. Fill in these details
+\def \CapstoneTeamName{		}
+\def \CapstoneTeamNumber{		6}
+\def \GroupMemberOne{			Donghao Lin}
+\def \GroupMemberTwo{			Joshua Diedrich}
+\def \GroupMemberThree{			Christopher Breniser}
+\def \CapstoneProjectName{		Race Car Scanning and Modeling}
+\def \CapstoneSponsorCompany{	REHV}
+\def \CapstoneSponsorPersonOne{	Kyson Montague}
+\def \CapstoneSponsorPersonTwo{	Rodney Stauber}
+
+% 2. Uncomment the appropriate line below so that the document type works
+\def \DocType{	
+				Requirements Document
+				%Technology Review
+				%Design Document
+				%Progress Report
+				}
+			
+\newcommand{\NameSigPair}[1]{\par
+\makebox[2.75in][r]{#1} \hfil 	\makebox[3.25in]{\makebox[2.25in]{\hrulefill} \hfill		\makebox[.75in]{\hrulefill}}
+\par\vspace{-12pt} \textit{\tiny\noindent
+\makebox[2.75in]{} \hfil		\makebox[3.25in]{\makebox[2.25in][r]{Signature} \hfill	\makebox[.75in][r]{Date}}}}
+% 3. If the document is not to be signed, uncomment the RENEWcommand below
+%\renewcommand{\NameSigPair}[1]{#1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\begin{titlepage}
+    \pagenumbering{gobble}
+    \begin{singlespace}
+    	\includegraphics[height=4cm]{coe_v_spot1}
+        \hfill 
+        % 4. If you have a logo, use this includegraphics command to put it on the coversheet.
+        %\includegraphics[height=4cm]{CompanyLogo}   
+        \par\vspace{.2in}
+        \centering
+        \scshape{
+            \huge CS Capstone \DocType \par
+            {\large\today}\par
+            \vspace{.5in}
+            \textbf{\Huge\CapstoneProjectName}\par
+            \vfill
+            {\large Prepared for}\par
+            \Huge \CapstoneSponsorCompany\par
+            \vspace{5pt}
+            {\Large\NameSigPair{\CapstoneSponsorPersonOne}\par}
+            {\Large\NameSigPair{\CapstoneSponsorPersonTwo}\par}
+            {\large Prepared by }\par
+            Group\CapstoneTeamNumber\par
+            % 5. comment out the line below this one if you do not wish to name your team
+            \CapstoneTeamName\par 
+            \vspace{5pt}
+            {\Large
+                \NameSigPair{\GroupMemberOne}\par
+                \NameSigPair{\GroupMemberTwo}\par
+                \NameSigPair{\GroupMemberThree}\par
+            }
+            \vspace{20pt}
+        }
+        \begin{abstract}
+        % 6. Fill in your abstract    
+        	This document outlines the client requirements for achieving a base model for scanning and measuring Indy Lights race cars to confirm their alignment with compliance regulations. It will cover the technology the project will be providing, as well as the dependencies of the project.  This document is an agreement between RHEV and LARS on the expectations of the Race Car Scanning and Modeling project.
+        \end{abstract}     
+    \end{singlespace}
+\end{titlepage}
+\newpage
+\pagenumbering{arabic}
+\tableofcontents
+% 7. uncomment this (if applicable). Consider adding a page break.
+%\listoffigures
+%\listoftables
+\clearpage
+
+\section{Introduction}
+\subsection{Purpose}
+This document is to present a detailed description of the capstone project currently titled “Race Car Scanning and Modeling project”. It is being compiled and completed by the Oregon State University Group 6 CS Capstone Team. This document is intended for the REHV development team and any of their partnering affiliates.
+
+\subsection{Scope}
+The project described in this document will be used by the REHV development team as a base for testing and creating a system to measure Indy Lights series race car body's to check for compliance prior to a race.
+
+\subsection{Definitions}
+\begin{longtable}{|p{1.5cm}|p{15cm}|}
+
+\caption{A sample long table.} \label{tab:long} \\
+
+\hline \multicolumn{1}{|c|}{\textbf{Term}} & \multicolumn{1}{c|}{\textbf{Definition}} \hline
+\endfirsthead
+
+REHV & An organization that develops Indey Lights race car related software. They are known for there TechWorks system and introducing digital measurement tracking during pre-race inspections. 
+\hline
+CARS & Camera Assisted Race-car Scanning
+\hline
+Chassis & The central body of the car, including the driver's compartment. Also referred to as the "tub."
+\hline
+Camber & Degree to which front tires lean in toward the car (from the top of the tire) and the left-side tires lean out. A useful tool to gain grip in corners by maximizing the amount of tire-to-track contact
+\hline
+Toe & Refers to the alignment of the front and rear tires. If tires point inward, the condition is called "toe-in." If tires point outward, the condition is called "toe-out." Correct toe settings are essential in order to maximize grip.
+\hline
+Wheelbase & The distance between the centers of the front and rear wheels. 
+\hline
+OpenCV & A library of programming functions mainly aimed at real-time computer vision.
+\hline
+Contour & An outline of an object that OpenCV can detect and distinguish from surrounding pixels.  
+\hline
+ZED Stereo Camera & A device comprised of two separate cameras a known distance away from another. These cameras allow the capture of depth information when used in combination with the ZED SDK. 
+\hline
+ZED SDK & A library of programming functions to take advantage of the ZED Stereo Cameras ability to capture 3D images and process depth maps.
+\hline
+
+\end{longtable}
+
+\section{External Interfaces}
+
+\subsection{User}
+The software user interface will be a simple output of data displayed to a screen. It will consist of a start/run button, which will subsequently take the measurements needed, and print them to the screen.
+
+\section{Functions}
+\subsection{Toe}
+The program will need to be able accurately and automatically obtain a measurement for the toe of the vehicle's wheels.  As described above, Toe is the horizontal angle the wheel is turned relative to the axle.  It is described as toe in, or toe out, and should be expressed in degrees.
+\subsection{Camber}
+The program will need to be able accurately and automatically obtain a measurement for the camber of the vehicle.  As described above, Camber is the vertical angle the wheel is turned relative to the axle.  This can take on either a positive or negative value and should be expressed in degrees.
+\subsection{Track}
+The program will need to be able to accurately and automatically obtain a measurement for the Track of the vehicle.  Track is described as the width of the vehicle between two wheels.
+\subsection{Wheelbase}
+The program will need to be able to accurately and automatically obtain a measurement for the Wheelbase of the vehicle.  Wheelbase is the "length" of the vehicle, and refers to the distance from the center of the back wheel to the center of the front wheel.
+
+
+\section{Performance Requirements}
+\subsection{Consistency/Accuracy}
+The program needs to be considerably accurate and consistent.  The measurements should have an error of about one half inch at maximum, and deliver the same results on separate runs.
+\subsection{Speed}
+The current process of inspecting Indie Light Cars takes a certain amount of time.  This project will have to take measurements quickly enough such that it does not add any time to these inspections.  A runtime of about 30 seconds should be more than fast enough.
+\subsection{Robustness}
+The product will be exposed to weather conditions at each race.  The measurements need to retain their accuracy among several different levels of light.
+
+
+\section{Software System Attributes}
+\subsection{Scalability}
+This system will be a modular piece of software that enables the end user to attach multiple Cameras to take measurements that will in turn pass their inputs into our software and be processed accordingly.
+\subsection{Reliability}
+The project will produce reliably consistent results on separate runs of the program.  The results should not differ between identical measurements within our error constraint. 
+
+\end{document}

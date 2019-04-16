@@ -1,0 +1,132 @@
+\documentclass[onecolumn, draftclsnofoot,10pt, compsoc]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{setspace}
+\usepackage{longtable}
+
+\usepackage{geometry}
+\geometry{textheight=9.5in, textwidth=7in}
+
+% 1. Fill in these details
+\def \CapstoneTeamName{		}
+\def \CapstoneTeamNumber{		6}
+\def \GroupMemberOne{			Donghao Lin}
+\def \GroupMemberTwo{			Joshua Diedrich}
+\def \GroupMemberThree{			Christopher Breniser}
+\def \CapstoneProjectName{		Race Car Scanning and Modeling}
+\def \CapstoneSponsorCompany{	REHV}
+\def \CapstoneSponsorPersonOne{	Kyson Montague}
+\def \CapstoneSponsorPersonTwo{	Rodney Stauber}
+
+% 2. Uncomment the appropriate line below so that the document type works
+\def \DocType{	
+				%Requirements Document
+				%Technology Review
+				%Design Document
+				Progress Report
+				}
+			
+\newcommand{\NameSigPair}[1]{\par
+\makebox[2.75in][r]{#1} \hfil 	\makebox[3.25in]{\makebox[2.25in]{\hrulefill} \hfill		\makebox[.75in]{\hrulefill}}
+\par\vspace{-12pt} \textit{\tiny\noindent
+\makebox[2.75in]{} \hfil		\makebox[3.25in]{\makebox[2.25in][r]{Signature} \hfill	\makebox[.75in][r]{Date}}}}
+% 3. If the document is not to be signed, uncomment the RENEWcommand below
+%\renewcommand{\NameSigPair}[1]{#1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\begin{titlepage}
+    \pagenumbering{gobble}
+    \begin{singlespace}
+    	\includegraphics[height=4cm]{coe_v_spot1}
+        \hfill 
+        % 4. If you have a logo, use this includegraphics command to put it on the coversheet.
+        %\includegraphics[height=4cm]{CompanyLogo}   
+        \par\vspace{.2in}
+        \centering
+        \scshape{
+            \huge CS Capstone \DocType \par
+            {\large\today}\par
+            \vspace{.5in}
+            \textbf{\Huge\CapstoneProjectName}\par
+            \vfill
+            {\large Prepared for}\par
+            \Huge \CapstoneSponsorCompany\par
+            \vspace{5pt}
+            {\Large\NameSigPair{\CapstoneSponsorPersonOne}\par}
+            {\Large\NameSigPair{\CapstoneSponsorPersonTwo}\par}
+            {\large Prepared by }\par
+            Group\CapstoneTeamNumber\par
+            % 5. comment out the line below this one if you do not wish to name your team
+            \CapstoneTeamName\par 
+            \vspace{5pt}
+            {\Large
+                \NameSigPair{\GroupMemberOne}\par
+                \NameSigPair{\GroupMemberTwo}\par
+                \NameSigPair{\GroupMemberThree}\par
+            }
+            \vspace{20pt}
+        }
+        \begin{abstract}
+        % 6. Fill in your abstract    
+        	This document describes the method used to measure the axle length of Indie Lights race cars using single image distance scanning. This document will explore various OpenCV libraries and functions used, as well as the formulas used to calculate Indie Lights race cars axle length.
+        \end{abstract}     
+    \end{singlespace}
+\end{titlepage}
+\newpage
+\pagenumbering{arabic}
+\tableofcontents
+% 7. uncomment this (if applicable). Consider adding a page break.
+%\listoffigures
+%\listoftables
+\clearpage
+
+\section{Purpose/Goals}
+Our project is based around the idea of supplementing a process that Race Cars undergo before each race, referred to as a pre race inspection.  Specifically, our project works on a car called an Indy Light.  An Indy Light is a certain type of race car, similar to that of an Indy Car.  Prior to each race, every Indy Light car must meet certain requirements to pass inspection.  These requirements include things like weight, width, tire pressure, wing angle, and many more.  An inspection starts with the vehicle being rolled onto a scale.  Next, the inspection team takes each required measurement of the car by hand, using special tooling.  The car then either passes or fails it’s inspection.
+\newline
+
+\noindent The purpose of our project is to supplement the pre race inspection process using automated technology.  It takes a lot of manpower, and tedious work to make each measurement on the car.  Having people manually using tools to make every measurement makes for a somewhat slow inspection.  Our project aims at replacing some of these manual measurements with automated ones.  This should reduce the man-power needed to obtain measurements, and make it as easy as clicking a button.  Our device should also add to the process by measuring a few things that the team is not already picking up.
+
+\newline
+
+\noindent The first measurements we want to make are called camber and toe.  These relate to the wheels of the vehicle, specifically their angle.  Wheels are not all pointed straight forward and straight up and down, they often have some angle associated with them. Camber is the vertical angle of the wheel, while toe is the horizontal angle of the wheel.
+\newline
+
+\noindent Next we want to measure the wheelbase of the car.  The wheelbase is the distance from the center axle of the front wheels to the center axle of the back wheels.
+
+\newline
+
+\noindent Finally,  we want to measure what is called the track.  Track is basically the width of the car.  It is the distance horizontally from wheel to wheel.  This measurement is especially difficult to take by hand, because you can't just spread a measuring tape from one wheel across the car to the other.
+\newline
+
+\noindent The measurements we are taking are going to be very important.  Inspection for each car can actually stop that car from competing in the race, which is a big deal for the driver or company associated with that car.  Because of that, our system needs to meet some strict goals when it comes to consistency and accuracy.  One goal is that our design is cost efficient.  We want to aim to use the least amount of expensive equipment without affecting the accuracy of our measurements too much.  Our client can allow us some spending, but we can’t be purchasing top of the line equipment to create our product.  Our next goal is save time.  One of the main points of our project is to save the inspection team time.  They have a lot of measurements to get through during an inspection, and we want to cut down on the time it takes to make those.  Precision and accuracy is likely our most important goal.  The system needs to take measurements that are accurate and consistent enough for our system to be considered reliable.  Without reliability, our system could not be trusted to pass or fail a car.  If our system is inconsistent enough that it has to be double checked each time, then there is no point having it at all.  Finally, the system needs to be fast and repetitive.  Each car is measured is a matter of minutes, and then the next one is rolled up onto the scale.  The system has to have short enough downtime that it is able to repeat it’s measuring process over and over again during that short time period.
+
+\newline
+
+\noindent The measurements laid out earlier are a bare minimum requirement that we want to reach.  Through discussion with our client, we have also created some stretch goals that we might eventually want to add.  One possible stretch goal is to obtain a measurement on the wing angle.  This is currently a measurement done by hand, but with some additions, it would be possible to obtain.  Another stretch goal that we wish to achieve is some sort of user interface that implements a rough outline of an Indy Light car.  We expect this user interface to have a contoured layout of the Indy Light being measured, with labels on it for each of the measurements taken.  This could be held by one of the employees on a mobile device or pad, and would allow for easy viewing on the vehicle.
+
+
+\section{Obstacles} Overall the obstacles we faced were rough. We first had to work around the cost of high precision lasers and the fact that to gather the data we needed, would take approximately 3-5 lasers per wheel. We did this by planning to test with cheap lasers, with the plan to upgrade later on. For this, we needed to ensure that our methods would transfer over to high accuracy systems once our back-end was developed, and that the client could upgrade the hardware and still use our software with it. Though, the largest problem we faced was the inconsistency of car location. We were working toward a good method to counteract this all term, and ultimately, were unable to find an efficient method of scanning using lasers. Therefore we had to convert our project to using stereo vision.
+
+\section{Current Progress}
+We converted to using stereo vision once we discussed our current standing problems with our client. We would be unable to keep the wobble from the extended poles mounted to the car from affecting our measurement results, especially with the accuracy we are expected achieve. Without some form of consistent point for our rig to reference, lasers were not a viable option.
+
+\noindent We were working toward a good method to counteract this all term, and ultimately, were unable to find an efficient method of scanning using lasers. Therefore we had to convert our project to using stereo vision.
+
+\noindent Due to the transition from laser to stereo vision, we are now still doing research about stereo vision to have our design document done. 
+
+% 8. now you write!
+\section{Retrospective}
+\begin{longtable}{ | p{0.075\linewidth} | p{0.3\linewidth} | p{0.3\linewidth} | p{0.3\linewidth} |} \hline
+Weeks & Positives & Deltas & Actions  \\ \hline
+3 & We sent email to our client and ask for introduction about the project. & We needed to start working on the problem statement for the project. & Next we needed to meet with our sponsor to get more information about the project. \\ \hline
+4 & Completed Problem Statement. We made a meeting with our client(s), Kyson and Rodney, on Tuesday. They explained much more thoroughly what the project entailed. & Requirement document need to be written. & Got information from clients and began working on requirements document. \\ \hline
+5 & Our Requirements document progressed. & None. & Worked on our requirements document. \\ \hline
+6 & Cleared up uncertain details about the measurements we need to take. & We added lasers to our requirements. & We met with our groups client, turned in requirements document, completed tech reviews. \\ \hline
+7 & Finalized research necessary for our project. & None & Completed our final drafts of our tech reviews based off of peer revisions. \\ \hline
+8 & Started to create a better plan on how we can accurately get our measurements. & Changed from using lasers to using stereo vision.  & Met with our client. \\ \hline
+9 & Made a plan on how we are going to use stereo vision. & None. & We met as a group, and did research on our own. \\ \hline
+10 & Made good steps towards a better design. & Decided we would need more time to have a complete design regarding stereo vision & Completed design document. \\ \hline
+\end{longtable}
+
+\end{document}
